@@ -36,13 +36,19 @@ def load_model(chkpt_path: str, net: nn.Module, optim: torch.optim.Optimizer):
     state = dotdict(state)
     net.load_state_dict(state.net)
     optim.load_state_dict(state.optim)
-    return optim.iter
+    return state.iter
+
+
+def rgb_to_gray(rgb: torch.Tensor):
+    return 0.299 * rgb[..., 0] + 0.587 * rgb[..., 1] + 0.114 * rgb[..., 2]
 
 
 class Lambertian(nn.Module):
     def __init__(self, P: int) -> None:
         # P: number of pixels to recover
         super().__init__()
+        self.P = P
+
         self._albedo = make_params(torch.rand(P, 3))  # P,
         self._normal = make_params(torch.rand(P, 3))  # P,
 
@@ -57,13 +63,16 @@ class Lambertian(nn.Module):
     def normal(self) -> torch.Tensor:
         return self._normal_actvn(self._normal)
 
-    def forward(self, dirs: torch.Tensor, ints: torch.Tensor) -> torch.Tensor:
+    def forward(self, dirs: torch.Tensor, ints: torch.Tensor, valid: torch.Tensor = slice(None)) -> torch.Tensor:
         # dirs: N, 3
         # ints: N, 3
-        albedo = self.albedo[None]
-        normal = self.normal[None]
-        dirs = dirs[:, None]
-        ints = ints[:, None]
+        N, C = dirs.shape
+        P = self.P
+
+        albedo = self.albedo[None].expand(N, P, 3)[valid]  # 1, P, 3
+        normal = self.normal[None].expand(N, P, 3)[valid]  # 1, P, 3
+        dirs = dirs[:, None].expand(N, P, 3)[valid]  # N, 1, 3
+        ints = ints[:, None].expand(N, P, 3)[valid]  # N, 1, 3
         # lambertian model: I = albedo * normal @ dirs * ints
         render = albedo * ints * (normal * dirs).sum(dim=-1, keepdim=True)  # N, P, 3
         return render
@@ -78,10 +87,14 @@ def main():
     parser.add_argument('--image_list', default='filenames.txt')
     parser.add_argument('--output_dir', default='output')
     parser.add_argument('--device', default='cuda')
-    parser.add_argument('--iter', default=10000)
-    parser.add_argument('--high_low_atol', default=0.02, help='difference threshold in the rendered value with gt value to discard a pixel')
-    parser.add_argument('--high_low_iter', default=2000, help='number of iterations to perform after discarding highlights and shadows')
-    parser.add_argument('--lr', default=5e-2)
+    parser.add_argument('--iter', default=0, type=int)
+    parser.add_argument('--high_low_rtol', default=0.05, type=float, help='difference ratio in the rendered value with gt value to discard a pixel')
+    parser.add_argument('--high_low_iter', default=5000, type=int, help='number of iterations to perform after discarding highlights and shadows')
+    parser.add_argument('--lr', default=5e-2, type=float)
+    parser.add_argument('--restart', action='store_true')
+    parser.add_argument('--no_save', action='store_true')
+    parser.add_argument('--scratch', action='store_true')
+    parser.add_argument('--use_opt', action='store_true', help='use difference in rendered and gt value')
     args = parser.parse_args()
 
     # reconfigure paths based on data_root setting
@@ -111,33 +124,64 @@ def main():
     N, P, C = rgbs.shape
 
     # construct the simple lambertian model and corresponding optimizer
-    lambertian = Lambertian(P)
-    lambertian.to(args.device, non_blocking=True)
+    lambertian = Lambertian(P).to(args.device, non_blocking=True)
     optim = Adam(lambertian.parameters(), lr=args.lr)
 
     # maybe reload previous model from disk, since the training is merely a few seconds, we won't implement a resume option
     chkpt_path = join(args.output_dir, 'lambertian.pth')
-    if os.path.exists(chkpt_path):
+    if os.path.exists(chkpt_path) and not args.restart:
         iter = load_model(chkpt_path, lambertian, optim)
     else:
         iter = 0
 
-    # perform optimization on all pixels
-    pbar = tqdm(total=args.iter - iter)
-    for i in range(args.iter - iter):
-        optim.zero_grad()
-        render = lambertian(dirs, ints)
-        loss = mse(rgbs, render)
-        psnr = 10 * torch.log10(1 / loss)
-        loss.backward()
-        optim.step()
-        pbar.update(1)
-        pbar.set_description(f'loss: {loss.item():.8f}, psnr: {psnr.item():.6f}')
+    if iter < args.iter:
+        # perform optimization on all pixels
+        pbar = tqdm(total=args.iter - iter)
+        for i in range(args.iter - iter):
+            optim.zero_grad()
+            render = lambertian(dirs, ints)
+            loss = mse(rgbs, render)
+            psnr = 10 * torch.log10(1 / loss)
+            loss.backward()
+            optim.step()
+            pbar.update(1)
+            pbar.set_description(f'loss: {loss.item():.8f}, psnr: {psnr.item():.6f}')
 
-    # save the optimized model to disk (simple lambertian model for now)
-    save_model(chkpt_path, lambertian, optim, args.iter)
+        if not args.no_save:
+            # save the optimized model to disk (simple lambertian model for now)
+            save_model(chkpt_path, lambertian, optim, args.iter)
 
-    # find
+    if iter < args.iter + args.high_low_iter:
+        # find extra pixels, mark them as highlights or shadows
+        if args.use_opt:
+            render = lambertian(dirs, ints)
+            diff = (render - rgbs).norm(dim=-1)  # N, P
+        else:
+            diff = rgb_to_gray(rgbs)  # N, P
+        atol = diff.ravel().topk(int(args.high_low_rtol * (N * P)))[0].min()
+        valid = diff < atol
+        valid = valid.nonzero(as_tuple=True)
+
+        if args.scratch:
+            # reset network to random initialization
+            lambertian = Lambertian(P).to(args.device, non_blocking=True)
+            optim = Adam(lambertian.parameters(), lr=args.lr)
+
+        # perform second stage training without highlights or shadows
+        pbar = tqdm(total=args.high_low_iter + args.iter - iter)
+        for i in range(args.high_low_iter + args.iter - iter):
+            optim.zero_grad()
+            render = lambertian(dirs, ints, valid)
+            loss = mse(rgbs[valid], render)
+            psnr = 10 * torch.log10(1 / loss)
+            loss.backward()
+            optim.step()
+            pbar.update(1)
+            pbar.set_description(f'loss: {loss.item():.8f}, psnr: {psnr.item():.6f}')
+
+        if not args.no_save:
+            # save the optimized model to disk (simple lambertian model for now)
+            save_model(chkpt_path, lambertian, optim, args.iter + args.high_low_iter)
 
     # save normal image, regular images 0-255
     normal = lambertian.normal.detach()
