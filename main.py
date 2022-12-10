@@ -89,7 +89,7 @@ def main():
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--iter', default=0, type=int)
     parser.add_argument('--high_low_rtol', default=0.05, type=float, help='difference ratio in the rendered value with gt value to discard a pixel')
-    parser.add_argument('--high_low_iter', default=5000, type=int, help='number of iterations to perform after discarding highlights and shadows')
+    parser.add_argument('--high_low_iter', default=10000, type=int, help='number of iterations to perform after discarding highlights and shadows')
     parser.add_argument('--lr', default=5e-2, type=float)
     parser.add_argument('--restart', action='store_true')
     parser.add_argument('--no_save', action='store_true')
