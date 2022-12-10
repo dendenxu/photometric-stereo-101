@@ -151,7 +151,7 @@ def main():
             # save the optimized model to disk (simple lambertian model for now)
             save_model(chkpt_path, lambertian, optim, args.iter)
 
-    if iter < args.iter + args.high_low_iter:
+    if iter < args.iter:
         # find extra pixels, mark them as highlights or shadows
         if args.use_opt:
             render = lambertian(dirs, ints)
@@ -168,8 +168,8 @@ def main():
             optim = Adam(lambertian.parameters(), lr=args.lr)
 
         # perform second stage training without highlights or shadows
-        pbar = tqdm(total=args.high_low_iter + args.iter - iter)
-        for i in range(args.high_low_iter + args.iter - iter):
+        pbar = tqdm(total=args.iter - iter)
+        for i in range(args.iter - iter):
             optim.zero_grad()
             render = lambertian(dirs, ints, valid)
             loss = mse(rgbs[valid], render)
@@ -181,7 +181,7 @@ def main():
 
         if not args.no_save:
             # save the optimized model to disk (simple lambertian model for now)
-            save_model(chkpt_path, lambertian, optim, args.iter + args.high_low_iter)
+            save_model(chkpt_path, lambertian, optim, args.iter)
 
     # save normal image, regular images 0-255
     normal = lambertian.normal.detach()
