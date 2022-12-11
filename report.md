@@ -78,6 +78,8 @@ We tested three versions of the simple photometric algorithm:
 
   - The `--rtol_hi` and `--rtol_lo` variables are reused, but this time they denote the difference in grayscale between the rendered pixels and the actual pixel color for highlights and shadows respectively (set to 0.1 and 0.2 during all experiments).
 
+  - `--rtol_hi` and `--rtol_lo` are linearly annealed during **self-correction** for stable optimization.
+
   - Experiments show that our **self-correction photometric stereo** algorithm outperforms baseline methods (although only sometimes... :).
 
   - We reuse the code structure of the previous two implementations thus the code change is quite minimal:
@@ -98,7 +100,9 @@ We tested three versions of the simple photometric algorithm:
 - We perform our optimization in single precision floating points.
 - We normalize the pixel values to `[0, 1]` after reading them from disk. (by dividing with 65535 (max of 16 bit `png`)).
 - We clip the rendered pixels to non-negative values before saving them on disk.
-- We perform 30 **self-correction** steps based on the results of the **simple highlight-shadow removal** algorithm.
+- We perform 300 **self-correction** steps based on the results of the **simple highlight-shadow removal** algorithm.
+- We implement all **self-correction** loops inside one python call for better GPU utilization (almost always busy).
+- We introduce an annealing algorithm for the **self-correction** ratio for a stable optimization process.
 
 ## Experiment Results
 
