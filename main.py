@@ -100,7 +100,7 @@ def main():
     parser.add_argument('--rtol_lo', default=0.005, type=float, help='difference ratio in the rendered value with gt value to discard a pixel')
     parser.add_argument('--rtol_hi_opt', default=0.050, type=float, help='difference ratio in the rendered value with gt value to discard a pixel')
     parser.add_argument('--rtol_lo_opt', default=0.050, type=float, help='difference ratio in the rendered value with gt value to discard a pixel')
-    parser.add_argument('--anneal_slop', default=0.250, type=float)
+    parser.add_argument('--anneal_slop', default=0.500, type=float)
     parser.add_argument('--lr', default=1e-1, type=float)
     parser.add_argument('--repeat', default=1, type=int)
     parser.add_argument('--restart', action='store_true', help='ignore pretrained weights')
@@ -160,7 +160,7 @@ def main():
             if args.use_opt:
                 log(f'repeatation: {colored(f"#{i}/{args.repeat}", "cyan")}')
                 # Schlick's bias function, see https://arxiv.org/abs/2010.09714
-                bias = lambda x, s: (s * x) / ((s - 1) * x + 1)
+                def bias(x, s): return (s * x) / ((s - 1) * x + 1)
                 factor = bias((i + 1) / args.repeat, args.anneal_slop)
                 log(f'annealing: {colored(f"{factor:.06f}", "cyan")}')
 
@@ -175,7 +175,7 @@ def main():
                     render = lambertian(dirs, ints)
                     diff = rgb_to_gray(rgbs) - rgb_to_gray(render)  # N, P
                     # Schlick's bias function, see https://arxiv.org/abs/2010.09714
-                    bias = lambda x, s: (s * x) / ((s - 1) * x + 1)
+                    def bias(x, s): return (s * x) / ((s - 1) * x + 1)
                     factor = bias((i + 1) / args.repeat, args.anneal_slop)
                     atol_hi, atol_lo = get_atol(diff, args.rtol_hi_opt * factor, args.rtol_lo_opt * factor)
                     valid = valid & (diff < atol_hi) & (diff > atol_lo)

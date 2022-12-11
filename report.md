@@ -80,17 +80,19 @@ We tested three versions of the simple photometric algorithm:
 
   - `--rtol_hi` and `--rtol_lo` are linearly annealed during **self-correction** for stable optimization.
 
-  - Experiments show that our **self-correction photometric stereo** algorithm outperforms baseline methods (although only sometimes... :).
+  - Experiments show that our **self-correction photometric stereo** algorithm outperforms baseline methods (~~although only sometimes... and with quite a lot of noise lying around...~~ :).
+
+  - Noise stills exists even though we have developed an annealing scheme and large number of self-correction iterations, this is possibly due to the fact that some of the shadowed or highlighted pixels does not have enough valid Lambertian observations, where they are neither occluded, facing away from the light or facing directly at the most reflective angle.
 
   - We reuse the code structure of the previous two implementations thus the code change is quite minimal:
-
+  
     ```python
     render = lambertian(dirs, ints)
     diff = rgb_to_gray(rgbs) - rgb_to_gray(render)  # N, P
     ```
 
     Only these two lines need to be added to facilitate one round of self-correction.
-
+  
   - The reason for this different values in setup is that highlights often vary quite a bit in intensity while shadows are almost always pitch black.
 
 ### Implementation Detail
@@ -103,16 +105,65 @@ We tested three versions of the simple photometric algorithm:
 - We perform 300 **self-correction** steps based on the results of the **simple highlight-shadow removal** algorithm.
 - We implement all **self-correction** loops inside one python call for better GPU utilization (almost always busy).
 - We introduce an annealing algorithm for the **self-correction** ratio for a stable optimization process.
+- Re-rendered light direction is `[0, 0, 1]`, intensity is `[2, 2, 2]`
 
 ## Experiment Results
 
 ### `bear`
 
+#### Lambertian
+
+<img src="report.assets/albedo.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render.png" alt="render" style="zoom:50%;" />
+
+#### Global Sort
+
+<img src="report.assets/albedo-1670760219335-8.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670760231216-10.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670760243036-14.png" alt="render" style="zoom:50%;" />
+
+#### Self-Correction
+
+<img src="report.assets/albedo-1670761672125-54.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670761679705-56.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670761709903-60.png" alt="render" style="zoom:50%;" />
+
 ### `budda`
+
+#### Lambertian
+
+<img src="report.assets/albedo-1670760586022-16.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670760593332-18.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670760606219-22.png" alt="render" style="zoom:50%;" />
+
+#### Global Sort
+
+<img src="report.assets/albedo-1670760670904-24.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670760682573-26.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670760693011-28.png" alt="render" style="zoom:50%;" />
+
+#### Self-Correction
+
+<img src="report.assets/albedo-1670762591011-62.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670762597569-64.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670762603630-66.png" alt="render" style="zoom:50%;" />
 
 ### `cat`
 
+#### Lambertian
+
+<img src="report.assets/albedo-1670760725093-30.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670760734373-32.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670760742303-34.png" alt="render" style="zoom:50%;" />
+
+#### Global Sort
+
+<img src="report.assets/albedo-1670760772626-36.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670760823534-38.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670760829782-40.png" alt="render" style="zoom:50%;" />
+
+#### Self-Correction
+
+<img src="report.assets/albedo-1670762620392-68.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670762625892-70.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670762638519-74.png" alt="render" style="zoom:50%;" />
+
 ### `pot`
+
+#### Lambertian
+
+<img src="report.assets/albedo-1670760905768-42.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670760914859-44.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670760921622-46.png" alt="render" style="zoom:50%;" />
+
+#### Global Sort
+
+<img src="report.assets/albedo-1670760931650-48.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670760936648-50.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670760945612-52.png" alt="render" style="zoom:50%;" />
+
+#### Self-Correction
+
+<img src="report.assets/albedo-1670763238173-82.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670763243929-84.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670763255473-86.png" alt="render" style="zoom:50%;" />
 
 ## Thoughts
 
