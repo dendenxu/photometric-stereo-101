@@ -140,7 +140,7 @@ def main():
                 diff = (render - rgbs).norm(dim=-1)  # N, P
             else:
                 diff = rgb_to_gray(rgbs)  # N, P
-            atol = diff.ravel().topk(int(args.high_low_rtol * (N * P)))[0].min()
+            atol = diff.ravel().topk(int(args.rtol * (N * P)))[0].min()
             valid = diff < atol
             valid = valid.nonzero(as_tuple=True)
 
