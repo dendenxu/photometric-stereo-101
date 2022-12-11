@@ -147,9 +147,6 @@ def main():
                 diff = rgb_to_gray(rgbs)  # N, P
             else:
                 render = lambertian(dirs, ints)
-                # start from scratch to avoid the local minimum we're already in
-                lambertian = Lambertian(P).to(args.device, non_blocking=True)
-                optim = Adam(lambertian.parameters(), lr=args.lr)
                 diff = rgb_to_gray(rgbs) - rgb_to_gray(render)  # N, P
             atol_hi = diff.ravel().topk(int(args.rtol_hi * (N * P)), largest=True)[0].min()
             atol_lo = diff.ravel().topk(int(args.rtol_lo * (N * P)), largest=False)[0].max()
