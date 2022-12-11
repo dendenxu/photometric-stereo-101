@@ -72,7 +72,7 @@ We tested three versions of the simple photometric algorithm:
 
   - The gist of the algorithm is inspired by: [Self-Correction Human Parsing](https://arxiv.org/abs/1910.09777). 
 
-  - We start from the previous optimization, find pixels that violates the Lambertian model, discard them and continue training for a few iterations. 
+  - ###### We start from the previous optimization, find pixels that violates the Lambertian model, discard them and continue training for a few iterations. 
 
   - By repeating this process, we can filter out those points that violates the prior automatically (in a **self-supervised** way).
 
@@ -113,57 +113,57 @@ We tested three versions of the simple photometric algorithm:
 
 #### Lambertian
 
-<img src="report.assets/albedo.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render.png" alt="render" style="zoom:50%;" />
+<img src="report.assets/albedo.png" alt="albedo" style="zoom:30%;" /><img src="report.assets/normal.png" alt="normal" style="zoom:30%;" /><img src="report.assets/render.png" alt="render" style="zoom:30%;" />
 
 #### Global Sort
 
-<img src="report.assets/albedo-1670760219335-8.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670760231216-10.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670760243036-14.png" alt="render" style="zoom:50%;" />
+<img src="report.assets/albedo-1670760219335-8.png" alt="albedo" style="zoom:30%;" /><img src="report.assets/normal-1670760231216-10.png" alt="normal" style="zoom:30%;" /><img src="report.assets/render-1670760243036-14.png" alt="render" style="zoom:30%;" />
 
 #### Self-Correction
 
-<img src="report.assets/albedo-1670761672125-54.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670761679705-56.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670761709903-60.png" alt="render" style="zoom:50%;" />
+<img src="report.assets/albedo-1670761672125-54.png" alt="albedo" style="zoom:30%;" /><img src="report.assets/normal-1670761679705-56.png" alt="normal" style="zoom:30%;" /><img src="report.assets/render-1670761709903-60.png" alt="render" style="zoom:30%;" />
 
 ### `budda`
 
 #### Lambertian
 
-<img src="report.assets/albedo-1670760586022-16.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670760593332-18.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670760606219-22.png" alt="render" style="zoom:50%;" />
+<img src="report.assets/albedo-1670760586022-16.png" alt="albedo" style="zoom:30%;" /><img src="report.assets/normal-1670760593332-18.png" alt="normal" style="zoom:30%;" /><img src="report.assets/render-1670760606219-22.png" alt="render" style="zoom:30%;" />
 
 #### Global Sort
 
-<img src="report.assets/albedo-1670760670904-24.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670760682573-26.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670760693011-28.png" alt="render" style="zoom:50%;" />
+<img src="report.assets/albedo-1670760670904-24.png" alt="albedo" style="zoom:30%;" /><img src="report.assets/normal-1670760682573-26.png" alt="normal" style="zoom:30%;" /><img src="report.assets/render-1670760693011-28.png" alt="render" style="zoom:30%;" />
 
 #### Self-Correction
 
-<img src="report.assets/albedo-1670762591011-62.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670762597569-64.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670762603630-66.png" alt="render" style="zoom:50%;" />
+<img src="report.assets/albedo-1670762591011-62.png" alt="albedo" style="zoom:30%;" /><img src="report.assets/normal-1670762597569-64.png" alt="normal" style="zoom:30%;" /><img src="report.assets/render-1670762603630-66.png" alt="render" style="zoom:30%;" />
 
 ### `cat`
 
 #### Lambertian
 
-<img src="report.assets/albedo-1670760725093-30.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670760734373-32.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670760742303-34.png" alt="render" style="zoom:50%;" />
+<img src="report.assets/albedo-1670760725093-30.png" alt="albedo" style="zoom:30%;" /><img src="report.assets/normal-1670760734373-32.png" alt="normal" style="zoom:30%;" /><img src="report.assets/render-1670760742303-34.png" alt="render" style="zoom:30%;" />
 
 #### Global Sort
 
-<img src="report.assets/albedo-1670760772626-36.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670760823534-38.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670760829782-40.png" alt="render" style="zoom:50%;" />
+<img src="report.assets/albedo-1670760772626-36.png" alt="albedo" style="zoom:30%;" /><img src="report.assets/normal-1670760823534-38.png" alt="normal" style="zoom:30%;" /><img src="report.assets/render-1670760829782-40.png" alt="render" style="zoom:30%;" />
 
 #### Self-Correction
 
-<img src="report.assets/albedo-1670762620392-68.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670762625892-70.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670762638519-74.png" alt="render" style="zoom:50%;" />
+<img src="report.assets/albedo-1670762620392-68.png" alt="albedo" style="zoom:30%;" /><img src="report.assets/normal-1670762625892-70.png" alt="normal" style="zoom:30%;" /><img src="report.assets/render-1670762638519-74.png" alt="render" style="zoom:30%;" />
 
 ### `pot`
 
 #### Lambertian
 
-<img src="report.assets/albedo-1670760905768-42.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670760914859-44.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670760921622-46.png" alt="render" style="zoom:50%;" />
+<img src="report.assets/albedo-1670760905768-42.png" alt="albedo" style="zoom:30%;" /><img src="report.assets/normal-1670760914859-44.png" alt="normal" style="zoom:30%;" /><img src="report.assets/render-1670760921622-46.png" alt="render" style="zoom:30%;" />
 
 #### Global Sort
 
-<img src="report.assets/albedo-1670760931650-48.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670760936648-50.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670760945612-52.png" alt="render" style="zoom:50%;" />
+<img src="report.assets/albedo-1670760931650-48.png" alt="albedo" style="zoom:30%;" /><img src="report.assets/normal-1670760936648-50.png" alt="normal" style="zoom:30%;" /><img src="report.assets/render-1670760945612-52.png" alt="render" style="zoom:30%;" />
 
 #### Self-Correction
 
-<img src="report.assets/albedo-1670763238173-82.png" alt="albedo" style="zoom:50%;" /><img src="report.assets/normal-1670763243929-84.png" alt="normal" style="zoom:50%;" /><img src="report.assets/render-1670763255473-86.png" alt="render" style="zoom:50%;" />
+<img src="report.assets/albedo-1670763238173-82.png" alt="albedo" style="zoom:30%;" /><img src="report.assets/normal-1670763243929-84.png" alt="normal" style="zoom:30%;" /><img src="report.assets/render-1670763255473-86.png" alt="render" style="zoom:30%;" />
 
 ## Thoughts
 
