@@ -75,7 +75,7 @@ class Lambertian(nn.Module):
         dirs = dirs[:, None].expand(N, P, 3)[valid]  # N, 1, 3
         ints = ints[:, None].expand(N, P, 3)[valid]  # N, 1, 3
         # lambertian model: I = albedo * normal @ dirs * ints
-        render = albedo * ints * (normal * dirs).sum(dim=-1, keepdim=True)  # N, P, 3
+        render = albedo * ints * (normal * dirs).sum(dim=-1, keepdim=True)  # N, P,
         return render
 
 
@@ -89,7 +89,8 @@ def main():
     parser.add_argument('--output_dir', default='output')
     parser.add_argument('--device', default='cuda', help='if you have a GPU, use cuda for fast reconstruction, if device is \'cpu\', will use multi-core torch')
     parser.add_argument('--iter', default=5000, type=int, help='number of iterations to perform (maybe after discarding highlights and shadows)')
-    parser.add_argument('--rtol', default=0.05, type=float, help='difference ratio in the rendered value with gt value to discard a pixel')
+    parser.add_argument('--rtol_hi', default=0.100, type=float, help='difference ratio in the rendered value with gt value to discard a pixel')
+    parser.add_argument('--rtol_lo', default=0.005, type=float, help='difference ratio in the rendered value with gt value to discard a pixel')
     parser.add_argument('--lr', default=1e-1, type=float)
     parser.add_argument('--restart', action='store_true', help='ignore pretrained weights')
     parser.add_argument('--no_save', action='store_true', help='do not save trained weights (pixels) to disk')
@@ -108,7 +109,7 @@ def main():
     # load images & mask & light direction and intensity from disk
     img_list = load_image_list(args.image_list, args.data_root)
     # just a normalization for stable optimization (the input should alreay have beed linearized)
-    imgs = np.array(parallel_execution(img_list, action=load_unchanged)).astype(np.float32) / 65536
+    imgs = np.array(parallel_execution(img_list, action=load_unchanged)).astype(np.float32) / 65535.0
     mask = load_mask(args.mask_file)
     dirs = load_vec3(args.light_dir_file)
     ints = load_vec3(args.light_int_file)
@@ -136,7 +137,7 @@ def main():
         if args.use_opt:
             iter = 0
     elif args.use_opt:
-        log(f'not reloading from disk, --use_opt will be ignored')
+        log(f'not reloading from disk, --use_opt will be ignored', 'yellow')
         args.use_opt = False
 
     if iter < args.iter:
@@ -146,9 +147,14 @@ def main():
                 diff = rgb_to_gray(rgbs)  # N, P
             else:
                 render = lambertian(dirs, ints)
-                diff = (render - rgbs).norm(dim=-1)  # N, P
-            atol = diff.ravel().topk(int(args.rtol * (N * P)))[0].min()
-            valid = diff < atol
+                # start from scratch to avoid the local minimum we're already in
+                lambertian = Lambertian(P).to(args.device, non_blocking=True)
+                optim = Adam(lambertian.parameters(), lr=args.lr)
+                diff = rgb_to_gray(rgbs) - rgb_to_gray(render)  # N, P
+            atol_hi = diff.ravel().topk(int(args.rtol_hi * (N * P)), largest=True)[0].min()
+            atol_lo = diff.ravel().topk(int(args.rtol_lo * (N * P)), largest=False)[0].max()
+            valid = (diff < atol_hi) & (diff > atol_lo)
+            log(f'atol_hi: {colored(atol_hi.item(), "magenta")}, atol_lo: {colored(atol_lo.item(), "magenta")}')
             valid = valid.nonzero(as_tuple=True)
 
         # perform second stage training without highlights or shadows
@@ -176,14 +182,14 @@ def main():
     normal_image = normal.new_zeros(H, W, 3)
     normal_image[mask[..., 0]] = (normal + 1) / 2
     normal_image = normal_image.detach().cpu().numpy()
-    save_unchanged(join(args.output_dir, 'normal.png'), (normal_image.clip(0, 1) * 255).astype(np.uint8))
+    save_unchanged(join(args.output_dir, 'normal.png'), (normal_image.clip(0, 1) * 255.0).astype(np.uint8))
 
     # save albedo image as 16-bit png
     albedo = lambertian.albedo.detach()
     albedo_image = albedo.new_zeros(H, W, 3)
     albedo_image[mask[..., 0]] = albedo
     albedo_image = albedo_image.detach().cpu().numpy()
-    save_unchanged(join(args.output_dir, 'albedo.png'), (albedo_image.clip(0) * 65536).astype(np.uint16))
+    save_unchanged(join(args.output_dir, 'albedo.png'), (albedo_image.clip(0) * 65535.0).astype(np.uint16))
 
     # save re-rendered image as 16-bit png
     viewdir = normalize(torch.tensor([0., 0., 1.], dtype=torch.float, device=args.device))  # 3,
@@ -192,7 +198,7 @@ def main():
     render_image = render.new_zeros(H, W, 3)
     render_image[mask[..., 0]] = render
     render_image = render_image.detach().cpu().numpy()
-    save_unchanged(join(args.output_dir, 'render.png'), (render_image.clip(0) * 65536).astype(np.uint16))
+    save_unchanged(join(args.output_dir, 'render.png'), (render_image.clip(0) * 65535.0).astype(np.uint16))
 
 
 if __name__ == "__main__":
