@@ -89,7 +89,7 @@ We tested three versions of the simple photometric algorithm:
 
     Only these two lines need to be added to facilitate one round of self-correction.
 
-  - The reason for this different values setup is that highlights often vary quite a bit in intensity while shadows are almost always pitch black.
+  - The reason for this different values in setup is that highlights often vary quite a bit in intensity while shadows are almost always pitch black.
 
 ### Implementation Detail
 
@@ -114,10 +114,17 @@ We tested three versions of the simple photometric algorithm:
 
 Photometric stereo using simple Lambertian model is an intrinsically ill-posed problem since the Lambertian model does not cover all aspects of the rendering process and the material properties possibly exhibited in the rendered images. And some pixels does not contain enough valid information to recover even a simple Lambertian model.
 
+We assume the provided data is rendered by a noisy path tracer. And we have utilized two key attributes in the data during optimizaiton:
+
+1. Shadows are almost always black.
+2. When the rendering results of a Lambertian model differs from the actual pixel color, it usually indicates highlights or shadow (things that a simple Lambertian model cannot explain)
+
 Thus two of the most obvious improvements we could do are:
 
 1. Improve the rendering process of the recovery algorithm: by performing **shape-from-shading** on the result of photometric stereo, we can get a rough (or highly accuracy in case we use dense lighting) shape estimation from the provided data. Then, by rendering the Lambertian model with the **visibility** term in the rendering equation, we can solve for shadows. (At least find an accurate filter for shadowed pixels)
 2. Improve the material model (and possibly add to the rendering process): by modeling with a full blown BRDF/BSDF (or some simplified version like Microfacet) model, we can accurately render specular highlights (assuming accurate material parameters) instead of being limited by the simplicity of the Lambertian model.
+
+One of the most important thing in the implementation of these algorithms is the use of a GPU. It speeds things up quite significantly and makes iteration on the algorithm (like making various improvements) a extremely satisfactory process.
 
 
 

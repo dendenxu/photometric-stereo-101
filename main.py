@@ -100,6 +100,7 @@ def main():
     parser.add_argument('--rtol_lo', default=0.005, type=float, help='difference ratio in the rendered value with gt value to discard a pixel')
     parser.add_argument('--rtol_hi_opt', default=0.050, type=float, help='difference ratio in the rendered value with gt value to discard a pixel')
     parser.add_argument('--rtol_lo_opt', default=0.050, type=float, help='difference ratio in the rendered value with gt value to discard a pixel')
+    parser.add_argument('--opt_anneal', default=0.01, type=float)
     parser.add_argument('--lr', default=1e-1, type=float)
     parser.add_argument('--repeat', default=1, type=int)
     parser.add_argument('--restart', action='store_true', help='ignore pretrained weights')
@@ -156,6 +157,11 @@ def main():
 
     for i in range(args.repeat):
         if iter < args.iter:
+            if args.use_opt:
+                log(f'repeatation: {colored(f"#{i}/{args.repeat}", "cyan")}')
+                factor = (i + 1) / args.repeat * (1 - args.opt_anneal) + args.opt_anneal
+                log(f'annealing: {colored(f"{factor:.06f}", "cyan")}')
+
             if args.use_opt or args.use_pix:
                 # find extra pixels, mark them as highlights or shadows
                 diff = rgb_to_gray(rgbs)  # N, P
@@ -166,7 +172,8 @@ def main():
                     # use relative error to determine invalid pixels
                     render = lambertian(dirs, ints)
                     diff = rgb_to_gray(rgbs) - rgb_to_gray(render)  # N, P
-                    atol_hi, atol_lo = get_atol(diff, args.rtol_hi_opt, args.rtol_lo_opt)
+                    factor = (i + 1) / args.repeat * (1 - args.opt_anneal) + args.opt_anneal
+                    atol_hi, atol_lo = get_atol(diff, args.rtol_hi_opt * factor, args.rtol_lo_opt * factor)
                     valid = valid & (diff < atol_hi) & (diff > atol_lo)
 
                 # perform this async operation only once
@@ -186,7 +193,8 @@ def main():
 
                 # early termination
                 psnr = 10 * torch.log10(1 / loss)
-                if (psnr - prev) < torch.finfo(loss.dtype).eps:
+                atol = torch.finfo(loss.dtype).eps
+                if (psnr - prev) < atol:
                     log(f'early termination, reason: {colored("[convergence]", "green")}, diff in psnr: {colored(f"{psnr - prev:.12f}", "magenta")}')
                     break
                 prev = psnr
