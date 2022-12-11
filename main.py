@@ -87,13 +87,12 @@ def main():
     parser.add_argument('--image_list', default='filenames.txt')
     parser.add_argument('--output_dir', default='output')
     parser.add_argument('--device', default='cuda')
-    parser.add_argument('--iter', default=0, type=int)
-    parser.add_argument('--high_low_rtol', default=0.05, type=float, help='difference ratio in the rendered value with gt value to discard a pixel')
-    parser.add_argument('--high_low_iter', default=10000, type=int, help='number of iterations to perform after discarding highlights and shadows')
+    parser.add_argument('--iter', default=10000, type=int, help='number of iterations to perform after discarding highlights and shadows')
+    parser.add_argument('--rtol', default=0.05, type=float, help='difference ratio in the rendered value with gt value to discard a pixel')
     parser.add_argument('--lr', default=5e-2, type=float)
     parser.add_argument('--restart', action='store_true')
     parser.add_argument('--no_save', action='store_true')
-    parser.add_argument('--scratch', action='store_true')
+    parser.add_argument('--use_pix', action='store_true', help='use sorted global pixel values')
     parser.add_argument('--use_opt', action='store_true', help='use difference in rendered and gt value')
     args = parser.parse_args()
 
@@ -128,51 +127,33 @@ def main():
     optim = Adam(lambertian.parameters(), lr=args.lr)
 
     # maybe reload previous model from disk, since the training is merely a few seconds, we won't implement a resume option
+    iter = 0
     chkpt_path = join(args.output_dir, 'lambertian.pth')
     if os.path.exists(chkpt_path) and not args.restart:
         iter = load_model(chkpt_path, lambertian, optim)
-    else:
-        iter = 0
 
     if iter < args.iter:
-        # perform optimization on all pixels
-        pbar = tqdm(total=args.iter - iter)
-        for i in range(args.iter - iter):
-            optim.zero_grad()
-            render = lambertian(dirs, ints)
-            loss = mse(rgbs, render)
-            psnr = 10 * torch.log10(1 / loss)
-            loss.backward()
-            optim.step()
-            pbar.update(1)
-            pbar.set_description(f'loss: {loss.item():.8f}, psnr: {psnr.item():.6f}')
-
-        if not args.no_save:
-            # save the optimized model to disk (simple lambertian model for now)
-            save_model(chkpt_path, lambertian, optim, args.iter)
-
-    if iter < args.iter:
-        # find extra pixels, mark them as highlights or shadows
-        if args.use_opt:
-            render = lambertian(dirs, ints)
-            diff = (render - rgbs).norm(dim=-1)  # N, P
-        else:
-            diff = rgb_to_gray(rgbs)  # N, P
-        atol = diff.ravel().topk(int(args.high_low_rtol * (N * P)))[0].min()
-        valid = diff < atol
-        valid = valid.nonzero(as_tuple=True)
-
-        if args.scratch:
-            # reset network to random initialization
-            lambertian = Lambertian(P).to(args.device, non_blocking=True)
-            optim = Adam(lambertian.parameters(), lr=args.lr)
+        if args.use_opt or args.use_pix:
+            # find extra pixels, mark them as highlights or shadows
+            if args.use_opt:
+                render = lambertian(dirs, ints)
+                diff = (render - rgbs).norm(dim=-1)  # N, P
+            else:
+                diff = rgb_to_gray(rgbs)  # N, P
+            atol = diff.ravel().topk(int(args.high_low_rtol * (N * P)))[0].min()
+            valid = diff < atol
+            valid = valid.nonzero(as_tuple=True)
 
         # perform second stage training without highlights or shadows
         pbar = tqdm(total=args.iter - iter)
         for i in range(args.iter - iter):
             optim.zero_grad()
-            render = lambertian(dirs, ints, valid)
-            loss = mse(rgbs[valid], render)
+            if args.use_opt or args.use_pix:
+                render = lambertian(dirs, ints, valid)
+                loss = mse(rgbs[valid], render)
+            else:
+                render = lambertian(dirs, ints)
+                loss = mse(rgbs, render)
             psnr = 10 * torch.log10(1 / loss)
             loss.backward()
             optim.step()
