@@ -56,7 +56,7 @@ We tested three versions of the simple photometric algorithm:
 
   - The reason for computing indices instead of using the original `mask` is that CPU code and GPU code are executed asynchronously as long as no explicit sync signals or syncing required operation is performed (a rule of thumb: as long as we won't need GPU' s output for launching the next `cuda` kernel, we are good. `cuda` kernel launches require sizes to be predetermined.). And taking indices from a mask is such **syncing required operation** since future `cuda` kernel launches will need the size of the indices (computed from the `mask` tensor).
 
-  - We use an `--rtol_hi` and `--rtol_lo` parameter to control ratio to discard the pixel values. We set this value to 0.05 (5%) and 0.01 (1%) respectively in all experiments.
+  - We use an `--rtol_hi` and `--rtol_lo` parameter to control ratio to discard the pixel values. We set this value to 0.05 (5%) and 0.01 (1%) respectively in all experiments. 
 
   - We convert the `rgb` values to grayscale using:
 
@@ -88,6 +88,8 @@ We tested three versions of the simple photometric algorithm:
     ```
 
     Only these two lines need to be added to facilitate one round of self-correction.
+
+  - The reason for this different values setup is that highlights often vary quite a bit in intensity while shadows are almost always pitch black.
 
 ### Implementation Detail
 
