@@ -6,6 +6,7 @@ from torch import nn
 from tqdm import tqdm
 from os.path import join
 from torch.optim import Adam
+from termcolor import colored
 from utils import load_mask, load_unchanged, load_image, save_image, parallel_execution, make_params, make_buffer, normalize, mse, save_unchanged, log, run, dotdict
 
 
@@ -86,14 +87,14 @@ def main():
     parser.add_argument('--light_int_file', default='light_intensities.txt')
     parser.add_argument('--image_list', default='filenames.txt')
     parser.add_argument('--output_dir', default='output')
-    parser.add_argument('--device', default='cuda')
-    parser.add_argument('--iter', default=10000, type=int, help='number of iterations to perform after discarding highlights and shadows')
+    parser.add_argument('--device', default='cuda', help='if you have a GPU, use cuda for fast reconstruction, if device is \'cpu\', will use multi-core torch')
+    parser.add_argument('--iter', default=5000, type=int, help='number of iterations to perform (maybe after discarding highlights and shadows)')
     parser.add_argument('--rtol', default=0.05, type=float, help='difference ratio in the rendered value with gt value to discard a pixel')
-    parser.add_argument('--lr', default=5e-2, type=float)
-    parser.add_argument('--restart', action='store_true')
-    parser.add_argument('--no_save', action='store_true')
+    parser.add_argument('--lr', default=1e-1, type=float)
+    parser.add_argument('--restart', action='store_true', help='ignore pretrained weights')
+    parser.add_argument('--no_save', action='store_true', help='do not save trained weights (pixels) to disk')
     parser.add_argument('--use_pix', action='store_true', help='use sorted global pixel values')
-    parser.add_argument('--use_opt', action='store_true', help='use difference in rendered and gt value')
+    parser.add_argument('--use_opt', action='store_true', help='use sorted difference in rendered and gt value (this required training the model with a vanilla model first)')
     args = parser.parse_args()
 
     # reconfigure paths based on data_root setting
@@ -102,6 +103,7 @@ def main():
     args.light_int_file = join(args.data_root, args.light_int_file)
     args.image_list = join(args.data_root, args.image_list)
     args.output_dir = join(args.data_root, args.output_dir)
+    log(f'output will be saved to: {colored(args.output_dir, "yellow")}')
 
     # load images & mask & light direction and intensity from disk
     img_list = load_image_list(args.image_list, args.data_root)
@@ -129,17 +131,22 @@ def main():
     # maybe reload previous model from disk, since the training is merely a few seconds, we won't implement a resume option
     iter = 0
     chkpt_path = join(args.output_dir, 'lambertian.pth')
-    if os.path.exists(chkpt_path) and not args.restart:
+    if os.path.exists(chkpt_path) and (not args.restart or args.use_opt):
         iter = load_model(chkpt_path, lambertian, optim)
+        if args.use_opt:
+            iter = 0
+    elif args.use_opt:
+        log(f'not reloading from disk, --use_opt will be ignored')
+        args.use_opt = False
 
     if iter < args.iter:
         if args.use_opt or args.use_pix:
             # find extra pixels, mark them as highlights or shadows
-            if args.use_opt:
+            if args.use_pix:
+                diff = rgb_to_gray(rgbs)  # N, P
+            else:
                 render = lambertian(dirs, ints)
                 diff = (render - rgbs).norm(dim=-1)  # N, P
-            else:
-                diff = rgb_to_gray(rgbs)  # N, P
             atol = diff.ravel().topk(int(args.rtol * (N * P)))[0].min()
             valid = diff < atol
             valid = valid.nonzero(as_tuple=True)
